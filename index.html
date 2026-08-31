@@ -145,6 +145,15 @@
     margin-bottom: 12px;
   }
   
+  .auth-toggle {
+    text-align: center;
+    margin-top: 10px;
+    color: #8fb3af;
+    font-size: 0.9em;
+    cursor: pointer;
+  }
+  .auth-toggle span { color: #5eead4; text-decoration: underline; }
+
   .hidden { display: none !important; }
 
   footer { text-align:center; color:#7fa8a3; padding:20px; font-size:0.85em; }
@@ -198,15 +207,21 @@
     </div>
   </div>
 
-  <!-- AUTH SECTION -->
+  <!-- AUTH SECTION (Register / Login with passwords) -->
   <div id="auth-section" class="box hidden">
-    <h2>Set Up Your Account</h2>
-    <p style="color: #8fb3af; font-size: 0.9em; margin-bottom: 12px;">Enter your name or student ID so your teacher knows who submitted the answer.</p>
-    <form id="auth-form" onsubmit="handleLogin(event)">
-      <label>Your Name / Student ID</label>
-      <input type="text" id="student-name" required placeholder="e.g. John Doe">
-      <button type="submit" class="action-btn">Save Account & Continue</button>
+    <h2 id="auth-title">Create Student Account</h2>
+    <form id="auth-form" onsubmit="handleAuthSubmit(event)">
+      <label>Username / Student ID</label>
+      <input type="text" id="auth-user" required placeholder="Choose a username">
+      
+      <label>Password</label>
+      <input type="password" id="auth-pass" required placeholder="Enter password">
+      
+      <button type="submit" class="action-btn" id="auth-btn">Register Account</button>
     </form>
+    <div class="auth-toggle" onclick="toggleAuthMode()">
+      <span id="toggle-text">Already have an account? Log In</span>
+    </div>
   </div>
 
   <!-- POLLS SECTION -->
@@ -214,16 +229,18 @@
     <h2>Interactive Polls & Q&A</h2>
     <p id="user-welcome-msg" style="color: #5eead4; margin-bottom: 14px;"></p>
 
-    <!-- Admin Panel -->
+    <!-- Admin Panel with Question Creator Form -->
     <div id="admin-panel" class="hidden" style="border: 1px dashed #2ec4b6; padding: 14px; border-radius: 8px; margin-bottom: 20px;">
       <h3 style="color: #5eead4; margin-bottom: 8px;">Teacher/Admin Dashboard</h3>
-      <p style="font-size: 0.85em; color: #8fb3af; margin-bottom: 10px;">To post new questions, simply create a new **Issue** in your GitHub repository. The issue title will automatically show up here as a poll question!</p>
+      <p style="font-size: 0.85em; color: #8fb3af; margin-bottom: 10px;">Post a new question for students to answer:</p>
+      <textarea id="new-question-text" rows="2" placeholder="Type poll question here..."></textarea>
+      <button class="action-btn" onclick="postNewQuestion()" style="padding: 8px; font-size: 0.9em;">Publish Question</button>
     </div>
 
     <!-- Polls Feed -->
     <div id="student-panel">
       <h3 style="color: #e8f4f2; margin-bottom: 10px;">Active Questions</h3>
-      <div id="polls-list">Loading questions from GitHub...</div>
+      <div id="polls-list">Loading questions...</div>
     </div>
   </div>
 </main>
@@ -231,13 +248,11 @@
 <footer>&copy; 2026 Burger House. All rights reserved.</footer>
 
 <script>
-  const GITHUB_USER = "YOUR_GITHUB_USERNAME";
-  const GITHUB_REPO = "YOUR_REPOSITORY_NAME";
-
   const ADMIN_NAME = "Teacher";
   const ADMIN_PASS = "humanskin777";
 
-  window.currentUser = localStorage.getItem("burger_user") || null;
+  let isLoginMode = false;
+  window.currentUser = localStorage.getItem("burger_logged_user") || null;
 
   window.showSection = function(sectionId) {
     document.getElementById('home-section').classList.add('hidden');
@@ -250,31 +265,60 @@
 
     if (sectionId === 'polls-section') {
       checkUserStatus();
-      loadGitHubIssues();
+      loadPolls();
     }
   }
 
-  window.handleLogin = function(event) {
-    event.preventDefault();
-    const name = document.getElementById('student-name').value.trim();
-    if (!name) return;
+  window.toggleAuthMode = function() {
+    isLoginMode = !isLoginMode;
+    document.getElementById('auth-title').innerText = isLoginMode ? "Log In to Account" : "Create Student Account";
+    document.getElementById('auth-btn').innerText = isLoginMode ? "Log In" : "Register Account";
+    document.getElementById('toggle-text').innerText = isLoginMode ? "Need an account? Register" : "Already have an account? Log In";
+  }
 
-    if (name.toLowerCase() === ADMIN_NAME.toLowerCase()) {
-      const password = prompt("Enter Admin Password:");
-      if (password !== ADMIN_PASS) {
-        alert("Incorrect password!");
+  window.handleAuthSubmit = function(event) {
+    event.preventDefault();
+    const user = document.getElementById('auth-user').value.trim();
+    const pass = document.getElementById('auth-pass').value;
+
+    if (!user || !pass) return;
+
+    // Check if trying to log in as Teacher
+    if (user.toLowerCase() === ADMIN_NAME.toLowerCase()) {
+      if (pass !== ADMIN_PASS) {
+        alert("Incorrect Admin Password!");
         return;
+      }
+    } else {
+      // Handle student accounts stored locally
+      let usersDb = JSON.parse(localStorage.getItem("burger_users_db") || "{}");
+      
+      if (!isLoginMode) {
+        // Register mode
+        if (usersDb[user]) {
+          alert("Username already exists! Choose another or log in.");
+          return;
+        }
+        usersDb[user] = pass;
+        localStorage.setItem("burger_users_db", JSON.stringify(usersDb));
+        alert("Account registered successfully!");
+      } else {
+        // Login mode
+        if (!usersDb[user] || usersDb[user] !== pass) {
+          alert("Invalid username or password!");
+          return;
+        }
       }
     }
 
-    localStorage.setItem("burger_user", name);
-    window.currentUser = name;
-    alert("Account saved!");
+    localStorage.setItem("burger_logged_user", user);
+    window.currentUser = user;
+    alert("Logged in as " + user);
     showSection('polls-section');
   }
 
   window.handleLogout = function() {
-    localStorage.removeItem("burger_user");
+    localStorage.removeItem("burger_logged_user");
     window.currentUser = null;
     alert("Logged out.");
     showSection('home');
@@ -296,70 +340,88 @@
       }
     } else {
       authMenuItem.innerHTML = `<button class="menu-link" onclick="showSection('auth-section')">Account / Login</button>`;
-      welcomeMsg.innerText = "Please set up your account name first to answer.";
+      welcomeMsg.innerText = "Please log in to view and answer questions.";
       adminPanel.classList.add('hidden');
     }
   }
 
-  async function loadGitHubIssues() {
+  // Teacher posts a question
+  window.postNewQuestion = function() {
+    const qText = document.getElementById('new-question-text').value.trim();
+    if (!qText) {
+      alert("Type a question first.");
+      return;
+    }
+
+    let questions = JSON.parse(localStorage.getItem("burger_polls") || "[]");
+    questions.push({ id: Date.now(), text: qText, answers: [] });
+    localStorage.setItem("burger_polls", JSON.stringify(questions));
+    
+    document.getElementById('new-question-text').value = "";
+    alert("Question published!");
+    loadPolls();
+  }
+
+  // Load questions and answers
+  function loadPolls() {
     const listEl = document.getElementById('polls-list');
     if (!window.currentUser) {
-      listEl.innerHTML = `<p style="color:#8fb3af;">Please <a href="#" onclick="showSection('auth-section')" style="color:#5eead4;">set up your account</a> first.</p>`;
+      listEl.innerHTML = `<p style="color:#8fb3af;">Please <a href="#" onclick="showSection('auth-section')" style="color:#5eead4;">log in</a> first.</p>`;
       return;
     }
 
-    listEl.innerHTML = "<p>Loading questions...</p>";
-
-    try {
-      const response = await fetch(`https://api.github.com/repos/${GITHUB_USER}/${GITHUB_REPO}/issues?state=open`);
-      const issues = await response.json();
-
-      if (!Array.isArray(issues) || issues.length === 0) {
-        listEl.innerHTML = "<p>No active poll questions available right now. (Teacher can create a GitHub Issue to add one!)</p>";
-        return;
-      }
-
-      let html = "";
-      for (const issue of issues) {
-        const commentsRes = await fetch(issue.comments_url);
-        const comments = await commentsRes.json();
-
-        let commentsHtml = "";
-        if (Array.isArray(comments) && comments.length > 0) {
-          comments.forEach(c => {
-            commentsHtml += `<div class="response-card" style="margin-top:8px; font-size:0.9em;"><strong style="color:#5eead4;">${c.user.login}:</strong> ${c.body}</div>`;
-          });
-        } else {
-          commentsHtml = `<p style="font-size:0.8em; color:#8fb3af; margin-top:6px;">No answers submitted yet.</p>`;
-        }
-
-        html += `
-          <div class="poll-card">
-            <p style="font-weight: bold; margin-bottom: 8px; color:#5eead4;">Question: ${issue.title}</p>
-            <textarea id="ans-${issue.number}" rows="2" placeholder="Type your answer here..."></textarea>
-            <button class="action-btn" onclick="submitAnswer(${issue.number})" style="padding: 8px; font-size: 0.9em; margin-bottom:10px;">Submit Answer</button>
-            <div style="border-top: 1px solid #1f3d3a; padding-top: 8px;">
-              <p style="font-size:0.85em; font-weight:bold; color:#e8f4f2;">Submissions:</p>
-              ${commentsHtml}
-            </div>
-          </div>
-        `;
-      }
-      listEl.innerHTML = html;
-    } catch (err) {
-      listEl.innerHTML = "<p>Could not load questions from GitHub.</p>";
+    let questions = JSON.parse(localStorage.getItem("burger_polls") || "[]");
+    if (questions.length === 0) {
+      listEl.innerHTML = "<p>No active questions right now.</p>";
+      return;
     }
+
+    let html = "";
+    questions.forEach(q => {
+      let answersHtml = "";
+      if (q.answers && q.answers.length > 0) {
+        q.answers.forEach(a => {
+          answersHtml += `<div class="response-card" style="margin-top:6px; font-size:0.9em;"><strong style="color:#5eead4;">${a.user}:</strong> ${a.text}</div>`;
+        });
+      } else {
+        answersHtml = `<p style="font-size:0.8em; color:#8fb3af; margin-top:4px;">No answers yet.</p>`;
+      }
+
+      html += `
+        <div class="poll-card">
+          <p style="font-weight: bold; margin-bottom: 8px; color:#5eead4;">${q.text}</p>
+          <textarea id="ans-${q.id}" rows="2" placeholder="Type your answer..."></textarea>
+          <button class="action-btn" onclick="submitStudentAnswer(${q.id})" style="padding: 8px; font-size: 0.9em; margin-bottom:10px;">Submit Answer</button>
+          <div style="border-top: 1px solid #1f3d3a; padding-top: 8px;">
+            <p style="font-size:0.85em; font-weight:bold; color:#e8f4f2;">Submissions:</p>
+            ${answersHtml}
+          </div>
+        </div>
+      `;
+    });
+    listEl.innerHTML = html;
   }
 
-  window.submitAnswer = async function(issueNumber) {
-    const text = document.getElementById(`ans-${issueNumber}`).value.trim();
+  // Student submits answer to a question
+  window.submitStudentAnswer = function(qId) {
+    const text = document.getElementById(`ans-${qId}`).value.trim();
     if (!text) {
-      alert("Please type an answer.");
+      alert("Type an answer first.");
       return;
     }
-    alert(`Answer ready! Copy your answer and post it directly on GitHub Issue #${issueNumber}.`);
+
+    let questions = JSON.parse(localStorage.getItem("burger_polls") || "[]");
+    questions = questions.map(q => {
+      if (q.id === qId) {
+        // Remove old answer by same user if they are updating it
+        q.answers = q.answers.filter(a => a.user !== window.currentUser);
+        q.answers.push({ user: window.currentUser, text: text });
+      }
+      return q;
+    });
+
+    localStorage.setItem("burger_polls", JSON.stringify(questions));
+    alert("Answer submitted successfully!");
+    loadPolls();
   }
 </script>
-
-</body>
-</html>
