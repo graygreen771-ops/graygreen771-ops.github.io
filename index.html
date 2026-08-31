@@ -207,7 +207,7 @@
     </div>
   </div>
 
-  <!-- AUTH SECTION (Register / Login with passwords) -->
+  <!-- AUTH SECTION -->
   <div id="auth-section" class="box hidden">
     <h2 id="auth-title">Create Student Account</h2>
     <form id="auth-form" onsubmit="handleAuthSubmit(event)">
@@ -283,18 +283,15 @@
 
     if (!user || !pass) return;
 
-    // Check if trying to log in as Teacher
     if (user.toLowerCase() === ADMIN_NAME.toLowerCase()) {
       if (pass !== ADMIN_PASS) {
         alert("Incorrect Admin Password!");
         return;
       }
     } else {
-      // Handle student accounts stored locally
       let usersDb = JSON.parse(localStorage.getItem("burger_users_db") || "{}");
       
       if (!isLoginMode) {
-        // Register mode
         if (usersDb[user]) {
           alert("Username already exists! Choose another or log in.");
           return;
@@ -303,7 +300,6 @@
         localStorage.setItem("burger_users_db", JSON.stringify(usersDb));
         alert("Account registered successfully!");
       } else {
-        // Login mode
         if (!usersDb[user] || usersDb[user] !== pass) {
           alert("Invalid username or password!");
           return;
@@ -345,7 +341,6 @@
     }
   }
 
-  // Teacher posts a question
   window.postNewQuestion = function() {
     const qText = document.getElementById('new-question-text').value.trim();
     if (!qText) {
@@ -362,7 +357,6 @@
     loadPolls();
   }
 
-  // Load questions and answers
   function loadPolls() {
     const listEl = document.getElementById('polls-list');
     if (!window.currentUser) {
@@ -376,33 +370,45 @@
       return;
     }
 
+    const isAdmin = window.currentUser.toLowerCase() === ADMIN_NAME.toLowerCase();
     let html = "";
+
     questions.forEach(q => {
       let answersHtml = "";
-      if (q.answers && q.answers.length > 0) {
-        q.answers.forEach(a => {
-          answersHtml += `<div class="response-card" style="margin-top:6px; font-size:0.9em;"><strong style="color:#5eead4;">${a.user}:</strong> ${a.text}</div>`;
-        });
-      } else {
-        answersHtml = `<p style="font-size:0.8em; color:#8fb3af; margin-top:4px;">No answers yet.</p>`;
+      
+      // ONLY show other submissions if logged in as Teacher
+      if (isAdmin) {
+        if (q.answers && q.answers.length > 0) {
+          q.answers.forEach(a => {
+            answersHtml += `<div class="response-card" style="margin-top:6px; font-size:0.9em;"><strong style="color:#5eead4;">${a.user}:</strong> ${a.text}</div>`;
+          });
+        } else {
+          answersHtml = `<p style="font-size:0.8em; color:#8fb3af; margin-top:4px;">No student answers submitted yet.</p>`;
+        }
+      }
+
+      let submissionsSection = "";
+      if (isAdmin) {
+        submissionsSection = `
+          <div style="border-top: 1px solid #1f3d3a; padding-top: 8px; margin-top: 10px;">
+            <p style="font-size:0.85em; font-weight:bold; color:#e8f4f2;">All Student Submissions (Admin Only):</p>
+            ${answersHtml}
+          </div>
+        `;
       }
 
       html += `
         <div class="poll-card">
           <p style="font-weight: bold; margin-bottom: 8px; color:#5eead4;">${q.text}</p>
           <textarea id="ans-${q.id}" rows="2" placeholder="Type your answer..."></textarea>
-          <button class="action-btn" onclick="submitStudentAnswer(${q.id})" style="padding: 8px; font-size: 0.9em; margin-bottom:10px;">Submit Answer</button>
-          <div style="border-top: 1px solid #1f3d3a; padding-top: 8px;">
-            <p style="font-size:0.85em; font-weight:bold; color:#e8f4f2;">Submissions:</p>
-            ${answersHtml}
-          </div>
+          <button class="action-btn" onclick="submitStudentAnswer(${q.id})" style="padding: 8px; font-size: 0.9em; margin-bottom:6px;">Submit Answer</button>
+          ${submissionsSection}
         </div>
       `;
     });
     listEl.innerHTML = html;
   }
 
-  // Student submits answer to a question
   window.submitStudentAnswer = function(qId) {
     const text = document.getElementById(`ans-${qId}`).value.trim();
     if (!text) {
@@ -413,7 +419,6 @@
     let questions = JSON.parse(localStorage.getItem("burger_polls") || "[]");
     questions = questions.map(q => {
       if (q.id === qId) {
-        // Remove old answer by same user if they are updating it
         q.answers = q.answers.filter(a => a.user !== window.currentUser);
         q.answers.push({ user: window.currentUser, text: text });
       }
