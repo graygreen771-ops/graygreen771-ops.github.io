@@ -13,24 +13,43 @@
     background-size: cover;
     background-position: center;
     color:#fff;
-    padding:100px 20px;
+    padding:80px 20px;
     text-align:center;
     border-bottom: 3px solid #2ec4b6;
   }
   header h1 {
-    font-size:2.8em;
+    font-size: clamp(1.8em, 6vw, 2.8em);
     margin-bottom:10px;
     color:#5eead4;
     text-shadow: 0 0 15px rgba(46,196,182,0.6);
     letter-spacing: 1px;
   }
-  header p { font-size:1.2em; color:#b8d8d4; }
+  header p { font-size:1.1em; color:#b8d8d4; }
 
-  nav { background:#0f1a1a; padding:15px; text-align:center; border-bottom:1px solid #2ec4b6; }
-  nav a { color:#5eead4; margin:0 15px; text-decoration:none; font-weight:bold; transition:0.2s; }
-  nav a:hover { color:#fff; text-shadow:0 0 8px #2ec4b6; }
+  /* Sticky nav bar - stays visible while scrolling */
+  nav {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    background:#0f1a1a;
+    padding:15px;
+    text-align:center;
+    border-bottom:1px solid #2ec4b6;
+    display:flex;
+    justify-content:center;
+    gap: 10px;
+  }
+  nav a {
+    color:#5eead4;
+    text-decoration:none;
+    font-weight:bold;
+    padding: 10px 16px;
+    border-radius: 6px;
+    transition:0.2s;
+  }
+  nav a:active, nav a:hover { background:#1a2e2c; color:#fff; }
 
-  section { padding:60px 20px; max-width:900px; margin:0 auto; }
+  section { padding:50px 20px; max-width:900px; margin:0 auto; }
   h2 {
     color:#5eead4;
     margin-bottom:20px;
@@ -46,11 +65,6 @@
     border:1px solid #1f3d3a;
     padding:25px;
     border-radius:8px;
-    transition: 0.3s;
-  }
-  .service-card:hover {
-    border-color:#2ec4b6;
-    box-shadow: 0 0 20px rgba(46,196,182,0.25);
   }
   .service-card h3 { color:#5eead4; margin-bottom:8px; }
 
@@ -63,9 +77,24 @@
     border-radius:6px;
     text-decoration:none;
     margin-top:20px;
-    transition:0.2s;
   }
-  .contact-btn:hover { background:#5eead4; box-shadow:0 0 20px rgba(94,234,212,0.5); }
+
+  /* Floating touch button - always visible, follows scroll */
+  .floating-btn {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    background:#2ec4b6;
+    color:#0a0e0e;
+    font-weight:bold;
+    padding:16px 24px;
+    border-radius:50px;
+    text-decoration:none;
+    box-shadow: 0 4px 20px rgba(46,196,182,0.5);
+    z-index: 200;
+    font-size: 1em;
+  }
+  .floating-btn:active { transform: scale(0.95); }
 
   footer { background:#0f1a1a; color:#7fa8a3; text-align:center; padding:20px; margin-top:40px; border-top:1px solid #1f3d3a; }
 </style>
@@ -88,35 +117,4 @@
   <div class="services">
     <div class="service-card">
       <h3>[Service 1]</h3>
-      <p>[Short description of service 1]</p>
-    </div>
-    <div class="service-card">
-      <h3>[Service 2]</h3>
-      <p>[Short description of service 2]</p>
-    </div>
-    <div class="service-card">
-      <h3>[Service 3]</h3>
-      <p>[Short description of service 3]</p>
-    </div>
-  </div>
-</section>
-
-<section id="about">
-  <h2>About Us</h2>
-  <p>[2-3 sentences about your business, experience, and what makes you different.]</p>
-</section>
-
-<section id="contact">
-  <h2>Contact Us</h2>
-  <p>📞 [Your Phone Number]</p>
-  <p>✉️ [Your Email]</p>
-  <p>📍 [Your City / Service Area]</p>
-  <a class="contact-btn" href="mailto:[youremail@example.com]">Get a Free Quote</a>
-</section>
-
-<footer>
-  <p>&copy; 2026 [Your Business Name]. All rights reserved.</p>
-</footer>
-
-</body>
-</html>
+      <p>[Sh
